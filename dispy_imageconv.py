@@ -4,20 +4,19 @@
 # run manager: ./kdd-cluster.py
 
 def compute(s, format):    
-    import operator
-    from scipy.spatial.distance import euclidean
-    from PIL import image
-    from StringIO import StringIO
+    from PIL import Image
+    import dispy, random
+    import StringIO
     import base64
 
     #recv and convert image, with PIL
     recv = bytearray(base64.b64decode(s))
-    save = StringIO()
-    save.write(recv)
-    save.seek(0)
-    img = Image.open(save).convert('L')
+    simpan = StringIO.StringIO()
+    simpan.write(recv)
+    simpan.seek(0)
+    img = Image.open(simpan).convert('L')
 
-    hasil = StringIO()
+    hasil = StringIO.StringIO()
     img.save(hasil, format)
     hasilSend = hasil.getvalue()
     hasil.close()
@@ -28,8 +27,6 @@ def compute(s, format):
 
 if __name__ == '__main__':
     import dispy, random
-    import csv
-    import pickle
     from PIL import Image
     import base64
     import StringIO
@@ -37,7 +34,7 @@ if __name__ == '__main__':
     import os
 
     # initiate cluster
-    cluster = dispy.JobCluster(compute, nodes=['10.151.22.*'])
+    cluster = dispy.JobCluster(compute, nodes=['10.151.64.*'])
     jobs = []
 
 
@@ -48,7 +45,9 @@ if __name__ == '__main__':
     filename = os.listdir(datasetdir)
     for img in filename:
         gambar.append(img)
+    print gambar
 
+    
     #read images, and distribute to clusters?
     idx = 1
     for file in gambar:
@@ -61,21 +60,32 @@ if __name__ == '__main__':
         imgString = StringIO.StringIO()
         img.save(imgString, format)
         imgSend = imgString.getvalue()
+        ##print imgSend[:512]
         imgString.close()
 
         byte = bytearray(imgSend)
-        s = byte64.b64encode(byte)
+        s = base64.b64encode(byte)
+        print "Sending Data :", s[:55]
 
-        recv = cluster.submit(s, format)
-        recv.id = idx
+        job = cluster.submit(s, format)
+        job.id = idx
         idx = idx+1
-
+        jobs.append(job)
+        print "Index :",idx
+        print "Job Error :",job.result
+        
+    index = 0
+    print "Uh"
+    for job in jobs:
+        recv = job()
+        print "Decoding...."
         byteTerima = bytearray(base64.b64decode(recv))
-
+        
         #saveimg
         simpan = StringIO.StringIO()
         simpan.write(byteTerima)
         simpan.seek(0)
         simpanImg = Image.open(simpan)
-        simpanImg.save(resultdir + "_converted" + file, format)
+        simpanImg.save(resultdir + "converted" + gambar[index], format)
+        index = index + 1
         print "done"
